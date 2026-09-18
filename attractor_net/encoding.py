@@ -40,6 +40,20 @@ SCALAR_KEYS = [
     "time_horizon",
 ]
 
+
+# Generic environmental affordances used by later experimental variants.
+# These describe what the current environment permits, not subject traits.
+AFFORDANCE_KEYS = [
+    "symbolic_manipulation",
+    "programmable_rules",
+    "rapid_iteration",
+    "pattern_comparison",
+    "physical_manipulation",
+    "cross_domain_bridge",
+    "large_information_space",
+    "audience_interaction",
+]
+
 @dataclass
 class EncodedExperience:
     vector: np.ndarray
