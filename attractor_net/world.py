@@ -37,7 +37,6 @@ class DevelopmentalWorld:
         weights = np.asarray([max(float(e.get("exposure_weight", 1.0)), 0.01) for e in self.events])
         raw = weights / weights.sum() * int(total_ticks)
         alloc = np.maximum(20, np.floor(raw).astype(int))
-        # Normalize while keeping each event long enough to make decisions.
         scale = total_ticks / max(int(alloc.sum()), 1)
         alloc = np.maximum(20, np.floor(alloc * scale).astype(int))
         diff = int(total_ticks - alloc.sum())
@@ -66,6 +65,7 @@ class DevelopmentalWorld:
 
         for event in self.events:
             ticks = alloc[event["id"]]
+            net.set_affordances(event.get("affordances", {}))
             event_counts[event["id"]] = ticks
             scalars = {k: float(event.get("scalars", {}).get(k, 0.0)) for k in SCALAR_KEYS}
             base = self.encoder.encode(event["situation"], scalars=scalars).vector
@@ -84,10 +84,10 @@ class DevelopmentalWorld:
                         x[:zero_action_from] += net.rng.normal(0.0, input_noise, zero_action_from).astype(np.float32)
                     net.step(x, reward=0.0, learn=True)
 
-                action, probs, policy_features = net.choose_action(allowed)
+                action, probs, policy_features, policy_context, policy_semantic, policy_affordance = net.choose_action(allowed)
                 consequence = event["consequences"].get(action, event.get("default_consequence", {"reward": 0.0, "feedback": "The situation continues."}))
                 reward = float(consequence.get("reward", 0.0))
-                net.reinforce_action(action, reward, probs, policy_features)
+                net.reinforce_action(action, reward, probs, policy_features, policy_context, policy_semantic, policy_affordance)
                 feedback = str(consequence.get("feedback", "The situation responds to the choice."))
                 outcome_scalars = dict(scalars)
                 for k, v in consequence.get("scalar_delta", {}).items():
