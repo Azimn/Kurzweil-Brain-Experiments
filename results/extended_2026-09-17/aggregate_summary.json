@@ -1,0 +1,40 @@
+{
+  "canonical": {
+    "n": 12,
+    "mean_final": 0.6323347596960854,
+    "sd_final": 0.020529701359497176,
+    "mean_gain": 0.0074230144228336166,
+    "positive_gain_fraction": 0.6666666666666666,
+    "mean_reward": 0.34008438818565406
+  },
+  "matched": {
+    "n": 12,
+    "mean_final": 0.5962609724322337,
+    "sd_final": 0.01552769495812973,
+    "mean_gain": -0.02865077284101807,
+    "positive_gain_fraction": 0.0,
+    "mean_reward": 0.34647943037974677
+  },
+  "computer_ablation": {
+    "n": 12,
+    "mean_final": 0.6731245563330917,
+    "sd_final": 0.011288125745057541,
+    "mean_gain": 0.04821281105983986,
+    "positive_gain_fraction": 1.0,
+    "mean_reward": 0.30916402953586497
+  },
+  "canonical_vs_matched": {
+    "mean_difference": 0.03607378726385169,
+    "median_difference": 0.0331361183388858,
+    "fraction_positive": 0.9166666666666666,
+    "paired_t_p": 0.0005296328270217891,
+    "wilcoxon_p": 0.0009765625
+  },
+  "canonical_vs_ablation": {
+    "mean_difference": -0.04078979663700624,
+    "median_difference": -0.04411815090801602,
+    "fraction_positive": 0.0,
+    "paired_t_p": 2.5208928158688138e-05,
+    "wilcoxon_p": 0.00048828125
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "note": "Reproduction parameters for the preserved 36-life extended v0.1 test. All unspecified network and evaluation parameters use config/default.json.",
+  "network_overrides": {
+    "neurons": 1024
+  },
+  "development_overrides": {
+    "ticks": 15000
+  },
+  "experiment": {
+    "founder_seed": 1842,
+    "experience_seeds": [31001, 31002, 31003, 31004, 31005, 31006, 31007, 31008, 31009, 31010, 31011, 31012],
+    "conditions": ["canonical", "matched", "computer_ablation"],
+    "trajectory_recording": false
+  },
+  "equivalent_command": "python run_experiment.py --neurons 1024 --ticks 15000 --seeds 12 --no-trajectory"
+}
