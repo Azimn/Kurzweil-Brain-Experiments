@@ -5,7 +5,7 @@ from typing import Dict, Iterable
 import numpy as np
 from scipy import sparse
 
-from .encoding import ACTIONS, ExperienceEncoder
+from .encoding import ACTIONS, SCALAR_KEYS, AFFORDANCE_KEYS, ExperienceEncoder
 
 
 class PlasticRecurrentAttractorNet:
@@ -38,6 +38,17 @@ class PlasticRecurrentAttractorNet:
         self.policy_lr = float(cfg.get("policy_lr", 0.05))
         self.policy_decay = float(cfg.get("policy_decay", 0.00002))
         self.baseline_lr = float(cfg.get("baseline_lr", 0.04))
+        self.policy_update_rule = str(cfg.get("policy_update_rule", "policy_gradient"))
+        self.policy_context_lr = float(cfg.get("policy_context_lr", self.policy_lr))
+        self.policy_semantic_lr = float(cfg.get("policy_semantic_lr", self.policy_lr))
+        self.policy_affordance_lr = float(cfg.get("policy_affordance_lr", self.policy_lr))
+        self.policy_context_decay = float(cfg.get("policy_context_decay", self.policy_decay))
+        self.policy_semantic_decay = float(cfg.get("policy_semantic_decay", self.policy_decay))
+        self.policy_affordance_decay = float(cfg.get("policy_affordance_decay", self.policy_decay))
+        self.policy_context_gain = float(cfg.get("policy_context_gain", 1.0))
+        self.policy_semantic_gain = float(cfg.get("policy_semantic_gain", 0.0))
+        self.policy_affordance_gain = float(cfg.get("policy_affordance_gain", 0.0))
+        self.policy_bias_lr_scale = float(cfg.get("policy_bias_lr_scale", 0.08))
 
         self.excitatory = self.rng.random(self.n) < float(cfg["excitatory_fraction"])
         self.W = self._make_recurrent()
@@ -50,14 +61,27 @@ class PlasticRecurrentAttractorNet:
         # Generic actor head. It is never supervised with historical actions.
         # It learns only from consequences of the organism's own choices.
         self.policy_w = self.rng.normal(0.0, 0.01, size=(len(ACTIONS), self.n)).astype(np.float32)
+        # v0.2 contextual actor channel. Zero initialization preserves the exact
+        # v0.1 founder policy before developmental learning begins.
+        self.policy_context_w = np.zeros((len(ACTIONS), len(SCALAR_KEYS)), dtype=np.float32)
+        self.policy_semantic_w = np.zeros((len(ACTIONS), self.encoder.sensory_dim), dtype=np.float32)
+        self.policy_affordance_w = np.zeros((len(ACTIONS), len(AFFORDANCE_KEYS)), dtype=np.float32)
         self.policy_b = np.zeros(len(ACTIONS), dtype=np.float32)
         self.reward_baseline = 0.0
+        self.last_context = np.zeros(len(SCALAR_KEYS), dtype=np.float32)
+        self.last_semantic = np.zeros(self.encoder.sensory_dim, dtype=np.float32)
+        self.last_affordance = np.zeros(len(AFFORDANCE_KEYS), dtype=np.float32)
 
         self.v = np.zeros(self.n, dtype=np.float32)
         self.rate = np.full(self.n, self.target_rate, dtype=np.float32)
         self.bias = np.full(self.n, -2.45, dtype=np.float32)
         self.tick = 0
 
+
+    def set_affordances(self, affordances: Dict[str, float] | None) -> None:
+        values = affordances or {}
+        for i, key in enumerate(AFFORDANCE_KEYS):
+            self.last_affordance[i] = float(np.clip(values.get(key, 0.0), -1.0, 1.0))
 
     def set_experience_seed(self, seed: int) -> None:
         """Change only stochastic experience sampling, never founder weights or wiring."""
@@ -129,6 +153,11 @@ class PlasticRecurrentAttractorNet:
             self.v += self.rng.normal(0.0, noise, self.n).astype(np.float32)
 
     def step(self, x: np.ndarray, reward: float = 0.0, learn: bool = True) -> None:
+        # Preserve generic situation scalars as an explicit actor context. The
+        # channel contains no subject identity, phenotype labels, or historical
+        # action targets. Outcome steps can update it through scalar deltas.
+        self.last_semantic[:] = x[:self.encoder.sensory_dim]
+        self.last_context[:] = x[self.encoder.scalar_offset:self.encoder.action_offset]
         syn = self.W.dot(self.rate)
         ext = self.Win.dot(x)
         excess = max(float(self.rate.mean()) - self.target_rate, 0.0)
@@ -156,10 +185,34 @@ class PlasticRecurrentAttractorNet:
             f /= norm
         return f
 
+    def _policy_context_features(self) -> np.ndarray:
+        c = self.last_context.astype(np.float32, copy=True)
+        norm = float(np.linalg.norm(c))
+        if norm > 1e-8:
+            c /= norm
+        return c
+
+    def _policy_semantic_features(self) -> np.ndarray:
+        s = self.last_semantic.astype(np.float32, copy=True)
+        norm = float(np.linalg.norm(s))
+        if norm > 1e-8:
+            s /= norm
+        return s
+
+    def _policy_affordance_features(self) -> np.ndarray:
+        a = self.last_affordance.astype(np.float32, copy=True)
+        norm = float(np.linalg.norm(a))
+        if norm > 1e-8:
+            a /= norm
+        return a
+
     def action_probabilities(self, allowed: Iterable[str] | None = None, add_noise: bool = False) -> Dict[str, float]:
         allowed_set = set(allowed) if allowed is not None else set(ACTIONS)
         f = self._policy_features()
-        logits_full = (self.policy_w.dot(f) + self.policy_b).astype(np.float64)
+        c = self._policy_context_features()
+        s = self._policy_semantic_features()
+        a = self._policy_affordance_features()
+        logits_full = (self.policy_w.dot(f) + self.policy_context_gain * self.policy_context_w.dot(c) + self.policy_semantic_gain * self.policy_semantic_w.dot(s) + self.policy_affordance_gain * self.policy_affordance_w.dot(a) + self.policy_b).astype(np.float64)
         names = [a for a in ACTIONS if a in allowed_set]
         idxs = [ACTIONS.index(a) for a in names]
         logits = logits_full[idxs]
@@ -170,27 +223,66 @@ class PlasticRecurrentAttractorNet:
         probs /= probs.sum()
         return {a: float(p) for a, p in zip(names, probs)}
 
-    def choose_action(self, allowed: Iterable[str]) -> tuple[str, Dict[str, float], np.ndarray]:
+    def choose_action(self, allowed: Iterable[str]) -> tuple[str, Dict[str, float], np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         allowed = list(allowed)
         f = self._policy_features()
+        c = self._policy_context_features()
+        s = self._policy_semantic_features()
+        a = self._policy_affordance_features()
         probs = self.action_probabilities(allowed, add_noise=True)
         names = list(probs)
         p = np.asarray([probs[n] for n in names], dtype=np.float64)
         idx = int(self.rng.choice(len(names), p=p / p.sum()))
-        return names[idx], probs, f
+        return names[idx], probs, f, c, s, a
 
-    def reinforce_action(self, action: str, reward: float, probs: Dict[str, float], features: np.ndarray) -> None:
+    def reinforce_action(self, action: str, reward: float, probs: Dict[str, float], features: np.ndarray, context_features: np.ndarray, semantic_features: np.ndarray, affordance_features: np.ndarray) -> None:
         if action not in ACTIONS or action not in probs:
             return
+        ai = ACTIONS.index(action)
+
+        if self.policy_update_rule == "value_prediction":
+            # Contextual action-value learning. The chosen action predicts its
+            # observed outcome and updates toward that bounded target. Unlike
+            # direct policy-gradient accumulation, repeated success naturally
+            # produces diminishing prediction error rather than unbounded
+            # preference growth.
+            estimate = float(
+                self.policy_w[ai].dot(features)
+                + self.policy_context_gain * self.policy_context_w[ai].dot(context_features)
+                + self.policy_semantic_gain * self.policy_semantic_w[ai].dot(semantic_features)
+                + self.policy_affordance_gain * self.policy_affordance_w[ai].dot(affordance_features)
+                + self.policy_b[ai]
+            )
+            delta = float(np.clip(float(reward) - estimate, -1.0, 1.0))
+            self.policy_w[ai] *= (1.0 - self.policy_decay)
+            self.policy_context_w[ai] *= (1.0 - self.policy_context_decay)
+            self.policy_semantic_w[ai] *= (1.0 - self.policy_semantic_decay)
+            self.policy_affordance_w[ai] *= (1.0 - self.policy_affordance_decay)
+            self.policy_w[ai] += self.policy_lr * delta * features
+            self.policy_context_w[ai] += self.policy_context_lr * delta * self.policy_context_gain * context_features
+            self.policy_semantic_w[ai] += self.policy_semantic_lr * delta * self.policy_semantic_gain * semantic_features
+            self.policy_affordance_w[ai] += self.policy_affordance_lr * delta * self.policy_affordance_gain * affordance_features
+            self.policy_b[ai] += (self.policy_lr * self.policy_bias_lr_scale) * delta
+            return
+
+        if self.policy_update_rule != "policy_gradient":
+            raise ValueError(f"Unknown policy_update_rule {self.policy_update_rule!r}")
+
         advantage = float(reward) - float(self.reward_baseline)
         self.reward_baseline += self.baseline_lr * (float(reward) - self.reward_baseline)
         error = np.zeros(len(ACTIONS), dtype=np.float32)
         for a, p in probs.items():
             error[ACTIONS.index(a)] = -float(p)
-        error[ACTIONS.index(action)] += 1.0
+        error[ai] += 1.0
         self.policy_w *= (1.0 - self.policy_decay)
+        self.policy_context_w *= (1.0 - self.policy_context_decay)
+        self.policy_semantic_w *= (1.0 - self.policy_semantic_decay)
+        self.policy_affordance_w *= (1.0 - self.policy_affordance_decay)
         self.policy_w += self.policy_lr * advantage * np.outer(error, features).astype(np.float32)
-        self.policy_b += (self.policy_lr * 0.08) * advantage * error
+        self.policy_context_w += self.policy_context_lr * advantage * np.outer(error, context_features).astype(np.float32)
+        self.policy_semantic_w += self.policy_semantic_lr * advantage * np.outer(error, semantic_features).astype(np.float32)
+        self.policy_affordance_w += self.policy_affordance_lr * advantage * np.outer(error, affordance_features).astype(np.float32)
+        self.policy_b += (self.policy_lr * self.policy_bias_lr_scale) * advantage * error
 
     def summary(self) -> Dict[str, float]:
         return {
@@ -207,6 +299,6 @@ class PlasticRecurrentAttractorNet:
         np.savez_compressed(path, v=self.v, rate=self.rate, bias=self.bias,
                             w_data=self.W.data, w_indices=self.W.indices,
                             w_indptr=self.W.indptr, excitatory=self.excitatory,
-                            eligibility=self.eligibility, policy_w=self.policy_w, policy_b=self.policy_b,
+                            eligibility=self.eligibility, policy_w=self.policy_w, policy_context_w=self.policy_context_w, policy_semantic_w=self.policy_semantic_w, policy_affordance_w=self.policy_affordance_w, policy_b=self.policy_b,
                             reward_baseline=np.asarray([self.reward_baseline], dtype=np.float32),
                             tick=np.asarray([self.tick], dtype=np.int64))

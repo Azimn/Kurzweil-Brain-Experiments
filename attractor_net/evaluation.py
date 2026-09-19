@@ -38,9 +38,13 @@ def run_probe_battery(net: PlasticRecurrentAttractorNet, encoder: ExperienceEnco
     saved_v, saved_rate = net.v.copy(), net.rate.copy()
     saved_tick = net.tick
     saved_rng = net.rng.bit_generator.state
+    saved_context = net.last_context.copy()
+    saved_semantic = net.last_semantic.copy()
+    saved_affordance = net.last_affordance.copy()
     try:
         for probe in probes:
             net.reset_fast_state(noise=0.0)
+            net.set_affordances(probe.get("affordances", {}))
             for _ in range(settle_ticks):
                 net.step(zero, reward=0.0, learn=False)
             scalars = {k: float(probe.get("scalars", {}).get(k, 0.0)) for k in SCALAR_KEYS}
@@ -64,6 +68,9 @@ def run_probe_battery(net: PlasticRecurrentAttractorNet, encoder: ExperienceEnco
         net.v[:] = saved_v; net.rate[:] = saved_rate
         net.tick = saved_tick
         net.rng.bit_generator.state = saved_rng
+        net.last_context[:] = saved_context
+        net.last_semantic[:] = saved_semantic
+        net.last_affordance[:] = saved_affordance
     return results
 
 
