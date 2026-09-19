@@ -6,7 +6,7 @@ from typing import Dict, List
 import json
 import numpy as np
 
-from .encoding import ExperienceEncoder, SCALAR_KEYS
+from .encoding import ACTIONS, ExperienceEncoder, SCALAR_KEYS
 from .network import PlasticRecurrentAttractorNet
 
 
@@ -85,8 +85,13 @@ class DevelopmentalWorld:
                     net.step(x, reward=0.0, learn=True)
 
                 action, probs, policy_features, policy_context, policy_semantic, policy_affordance = net.choose_action(allowed)
+                context_values = {
+                    a: float(net.policy_context_w[ACTIONS.index(a)].dot(policy_context))
+                    for a in allowed
+                }
                 consequence = event["consequences"].get(action, event.get("default_consequence", {"reward": 0.0, "feedback": "The situation continues."}))
                 reward = float(consequence.get("reward", 0.0))
+                decision_tick = int(net.tick)
                 net.reinforce_action(action, reward, probs, policy_features, policy_context, policy_semantic, policy_affordance)
                 feedback = str(consequence.get("feedback", "The situation responds to the choice."))
                 outcome_scalars = dict(scalars)
@@ -101,8 +106,14 @@ class DevelopmentalWorld:
                     net.step(x, reward=reward, learn=True)
 
                 decisions.append({
-                    "age": event["age"], "event_id": event["id"], "action": action,
-                    "reward": reward, "action_probabilities": probs,
+                    "tick": decision_tick,
+                    "age": event["age"],
+                    "event_id": event["id"],
+                    "allowed_actions": list(allowed),
+                    "action": action,
+                    "reward": reward,
+                    "action_probabilities": probs,
+                    "context_value_summary": context_values,
                 })
                 spent += block
 
