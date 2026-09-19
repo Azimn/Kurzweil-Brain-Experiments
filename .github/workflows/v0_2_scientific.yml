@@ -1,0 +1,44 @@
+name: v0.2 scientific execution
+
+on:
+  push:
+    branches:
+      - v0.4-bounded-value-learning
+  workflow_dispatch:
+
+concurrency:
+  group: kurzweil-v0-2-scientific
+  cancel-in-progress: false
+
+jobs:
+  execute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Developmental firewall gate
+        run: python audit_firewall.py
+      - name: Deterministic pre-execution gates
+        run: pytest -q
+      - name: Execute frozen v0.2 experiment
+        run: python run_v0_2.py --out results/v0_2
+      - name: Preserve checksums
+        run: |
+          cd results/v0_2
+          find . -type f -name '*.json' -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+      - name: Preserve scientific artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kurzweil-v0-2-results-${{ github.sha }}
+          path: |
+            results/v0_2/
+            V0_2_PREREGISTRATION.md
+          if-no-files-found: error
+          retention-days: 90
