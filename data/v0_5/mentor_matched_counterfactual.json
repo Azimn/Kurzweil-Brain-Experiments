@@ -1,0 +1,31 @@
+{
+  "condition": "v0.5_matched_general_problem_solving_mentor",
+  "parent_world": "data/development/kurzweil_canonical.json",
+  "intervention_event_id": "senior_ai_mentor_access",
+  "replacement_event": {
+    "id": "senior_general_problem_solving_mentor_access",
+    "age": 16,
+    "exposure_weight": 2.5,
+    "situation": "A senior researcher known for demanding general problem solving is reachable and is known to respond to strong ideas regardless of the age or status of the person presenting them. Serious engagement is possible if contact is initiated.",
+    "scalars": {
+      "valence": 0.35,
+      "social": 0.65,
+      "authority": 0.75,
+      "autonomy": 0.65,
+      "novelty": 0.65,
+      "achievement_opportunity": 0.75,
+      "resource_access": 0.8,
+      "technical_context": 0.95,
+      "criticism": 0.35
+    },
+    "available_actions": ["communicate", "seek_feedback", "collaborate", "analyze", "withdraw", "comply"],
+    "consequences": {
+      "communicate": {"reward": 0.5, "feedback": "The senior researcher responds to the substance of the idea rather than the student's status."},
+      "seek_feedback": {"reward": 0.5, "feedback": "Direct expert criticism is demanding but reveals stronger ways to formulate the problem."},
+      "collaborate": {"reward": 0.35, "feedback": "A continuing intellectual connection becomes possible around shared problem-solving questions."},
+      "analyze": {"reward": 0.2, "feedback": "Private preparation improves the idea but does not create access by itself."},
+      "withdraw": {"reward": 0.0, "feedback": "No contact occurs and the potential relationship remains unrealized."},
+      "comply": {"reward": 0.05, "feedback": "Waiting for formal status avoids risk but delays access to advanced discussion."}
+    }
+  }
+}
