@@ -78,7 +78,7 @@ def run_one(condition: str, world_payload: Dict, seed: int, smoke: bool = False)
     trace = world.run(net, total_ticks=cfg["development"]["ticks"], input_noise=cfg["development"]["input_noise"], decision_interval=cfg["development"]["decision_interval"])
     probes = load_probes(ROOT / "evaluation/adult_phenotype_probes.json")
     results = run_probe_battery(net, enc, probes, settle_ticks=cfg["evaluation"]["settle_ticks"], probe_ticks=cfg["evaluation"]["probe_ticks"])
-    decisions = [{"index": i, "event_id": d["event_id"], "age": d["age"], "action": d["action"], "reward": d["reward"], "action_probabilities": d["action_probabilities"]} for i, d in enumerate(trace.decisions)]
+    decisions = [dict(d, index=i, condition=condition, experience_seed=seed) for i, d in enumerate(trace.decisions)]
     return {"condition": condition, "founder_seed": FOUNDER_SEED, "experience_seed": seed, "development_ticks": trace.ticks, "state_digest": state_digest(net), "phenotype_similarity": phenotype_similarity(results), "phenotype_vector": phenotype_vector(results).tolist(), "final_probes": results, "trajectory": decisions}
 
 
