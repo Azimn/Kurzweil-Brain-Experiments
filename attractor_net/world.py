@@ -113,7 +113,7 @@ class DevelopmentalWorld:
                     "action": action,
                     "reward": reward,
                     "action_probabilities": probs,
-                    "context_value_summary": context_values,
+                    "contextual_action_values": context_values,
                 })
                 spent += block
 
