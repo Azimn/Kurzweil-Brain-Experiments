@@ -1,9 +1,8 @@
 name: v0.2 scientific execution
 
+# v0.2 is frozen. Re-execution is manual only so documentation or
+# result-freeze commits cannot silently launch duplicate scientific runs.
 on:
-  push:
-    branches:
-      - v0.4-bounded-value-learning
   workflow_dispatch:
 
 concurrency:
