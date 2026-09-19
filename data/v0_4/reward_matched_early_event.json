@@ -1,34 +1,26 @@
 {
   "id": "reward_matched_early_event",
   "age": 12,
-  "situation": "Access to a hands-on creative workshop with open-ended materials, rapid prototyping, mentorship, and repeated opportunities to build and revise projects.",
-  "exposure_weight": 1.0,
+  "exposure_weight": 4.0,
+  "situation": "A mentor arranges rare access to a well-equipped mechanical design workshop. The tools can combine reusable components, test explicit construction rules, support repeated trials, and produce physical prototypes that are difficult to make with ordinary household materials.",
   "scalars": {
-    "valence": 0.7,
-    "arousal": 0.6,
-    "social": 0.3,
-    "authority": 0.1,
-    "autonomy": 0.9,
-    "novelty": 0.9,
-    "achievement_opportunity": 0.8,
-    "uncertainty": 0.5,
-    "resource_access": 0.9,
-    "creative_context": 0.9,
-    "technical_context": 0.8,
-    "human_need": 0.2,
-    "criticism": 0.0,
-    "time_horizon": 0.5
+    "valence": 0.65,
+    "social": 0.45,
+    "autonomy": 0.7,
+    "novelty": 1.0,
+    "achievement_opportunity": 0.6,
+    "uncertainty": 0.75,
+    "resource_access": 0.95,
+    "technical_context": 1.0,
+    "creative_context": 0.55
   },
-  "available_actions": ["explore", "analyze", "create", "persist", "collaborate", "seek_feedback", "apply", "communicate", "switch_goal"],
+  "available_actions": ["explore", "analyze", "create", "persist", "seek_feedback", "withdraw"],
   "consequences": {
-    "explore": {"reward": 0.7},
-    "analyze": {"reward": 0.5},
-    "create": {"reward": 0.9},
-    "persist": {"reward": 0.6},
-    "collaborate": {"reward": 0.5},
-    "seek_feedback": {"reward": 0.5},
-    "apply": {"reward": 0.7},
-    "communicate": {"reward": 0.4},
-    "switch_goal": {"reward": 0.2}
+    "explore": {"reward": 0.45, "feedback": "Trying unfamiliar tools reveals that the workshop supports many different kinds of physical construction problems."},
+    "analyze": {"reward": 0.45, "feedback": "Studying how components interact reveals reusable mechanical patterns."},
+    "create": {"reward": 0.5, "feedback": "A small physical prototype produces a result that did not exist before and can be revised repeatedly."},
+    "persist": {"reward": 0.4, "feedback": "Repeated adjustment eventually turns a failed construction into a working one."},
+    "seek_feedback": {"reward": 0.3, "feedback": "Technical questions receive concrete explanations and access to better examples."},
+    "withdraw": {"reward": 0.0, "feedback": "The scarce workshop session ends without yielding much information."}
   }
 }
