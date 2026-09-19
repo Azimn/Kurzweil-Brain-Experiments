@@ -1,0 +1,34 @@
+{
+  "id": "reward_matched_early_event",
+  "age": 12,
+  "situation": "Access to a hands-on creative workshop with open-ended materials, rapid prototyping, mentorship, and repeated opportunities to build and revise projects.",
+  "exposure_weight": 1.0,
+  "scalars": {
+    "valence": 0.7,
+    "arousal": 0.6,
+    "social": 0.3,
+    "authority": 0.1,
+    "autonomy": 0.9,
+    "novelty": 0.9,
+    "achievement_opportunity": 0.8,
+    "uncertainty": 0.5,
+    "resource_access": 0.9,
+    "creative_context": 0.9,
+    "technical_context": 0.8,
+    "human_need": 0.2,
+    "criticism": 0.0,
+    "time_horizon": 0.5
+  },
+  "available_actions": ["explore", "analyze", "create", "persist", "collaborate", "seek_feedback", "apply", "communicate", "switch_goal"],
+  "consequences": {
+    "explore": {"reward": 0.7},
+    "analyze": {"reward": 0.5},
+    "create": {"reward": 0.9},
+    "persist": {"reward": 0.6},
+    "collaborate": {"reward": 0.5},
+    "seek_feedback": {"reward": 0.5},
+    "apply": {"reward": 0.7},
+    "communicate": {"reward": 0.4},
+    "switch_goal": {"reward": 0.2}
+  }
+}
