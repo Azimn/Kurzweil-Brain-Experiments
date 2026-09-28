@@ -1,0 +1,68 @@
+name: v0.5 causal trajectory scientific execution
+
+on:
+  workflow_dispatch:
+    inputs:
+      approved_sha:
+        description: Exact implementation SHA approved by the independent scientific reviewer
+        required: true
+        type: string
+
+concurrency:
+  group: kurzweil-v0-5-causal-scientific
+  cancel-in-progress: false
+
+jobs:
+  execute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    permissions:
+      contents: read
+    steps:
+      - name: Require exact reviewed dispatch head
+        shell: bash
+        run: |
+          test "${{ inputs.approved_sha }}" = "${{ github.sha }}" || {
+            echo "approved_sha must equal the exact workflow dispatch head"
+            exit 1
+          }
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.approved_sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Verify checked-out SHA
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${{ inputs.approved_sha }}"
+      - name: Developmental firewall gate
+        run: python audit_firewall.py
+      - name: Deterministic integrity gates
+        run: pytest -q
+      - name: Outcome-blind v0.5 preflight
+        run: python run_v0_5_causal.py --preflight
+      - name: Execute frozen paired v0.5 experiment
+        run: python run_v0_5_causal.py
+      - name: Preserve checksums and provenance
+        shell: bash
+        run: |
+          printf '%s\n' "${{ inputs.approved_sha }}" > results/v0_5/APPROVED_SHA.txt
+          printf '%s\n' "${{ github.run_id }}" > results/v0_5/WORKFLOW_RUN_ID.txt
+          cd results/v0_5
+          find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+      - name: Preserve immutable scientific artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kurzweil-v0-5-results-${{ inputs.approved_sha }}-${{ github.run_id }}
+          path: |
+            results/v0_5/
+            V0_5_PREREGISTRATION.md
+            data/v0_5/mentor_matched_counterfactual.json
+            config/extended_2026-09-17.json
+          if-no-files-found: error
+          retention-days: 90

@@ -57,13 +57,24 @@ class DevelopmentalWorld:
 
     def run(self, net: PlasticRecurrentAttractorNet, total_ticks: int,
             input_noise: float = 0.025, decision_interval: int = 24,
-            on_event_complete=None) -> DevelopmentTrace:
+            on_event_complete=None, event_start: int = 0,
+            event_stop: int | None = None) -> DevelopmentTrace:
+        """Run a deterministic whole life or an event-boundary slice.
+
+        Slices always use allocations computed from the complete world and the
+        original total tick budget. This permits checkpoint/replay without
+        changing event exposure. Defaults preserve the historical whole-life
+        behavior exactly.
+        """
         alloc = self.allocations(total_ticks)
         zero_action_from = self.encoder.action_offset
         decisions: List[Dict] = []
         event_counts: Dict[str, int] = {}
+        stop = len(self.events) if event_stop is None else int(event_stop)
+        if not (0 <= int(event_start) <= stop <= len(self.events)):
+            raise ValueError("invalid event slice")
 
-        for event in self.events:
+        for event in self.events[int(event_start):stop]:
             ticks = alloc[event["id"]]
             net.set_affordances(event.get("affordances", {}))
             event_counts[event["id"]] = ticks
