@@ -11,7 +11,6 @@ from v0_5_trajectory import (
     encountered_context_value_table,
     jensen_shannon_divergence,
     mean_absolute_value_distance,
-    network_state_digest,
     serialize_checkpoint,
 )
 from v0_6_timing import _ordered_events, build_timing_arm, validate_timing_arms
@@ -53,8 +52,6 @@ def _run_timing_pair(canonical, counterfactual, experience_seed, cfg, founder_se
                 "event_index": idx,
                 "canonical_event_id": ordered_c[idx]["id"],
                 "counterfactual_event_id": ordered_x[idx]["id"],
-                "canonical_state_sha256": network_state_digest(net_c),
-                "counterfactual_state_sha256": network_state_digest(net_x),
                 "value_distance": mean_absolute_value_distance(
                     encountered_context_value_table(tc.decisions),
                     encountered_context_value_table(tx.decisions),
@@ -64,7 +61,6 @@ def _run_timing_pair(canonical, counterfactual, experience_seed, cfg, founder_se
         )
 
     return {
-        "pre_intervention_state_sha256": network_state_digest(net_c) if not checkpoints else hashlib.sha256(pre_bytes_c).hexdigest(),
         "pre_intervention_serialization_sha256": hashlib.sha256(pre_bytes_c).hexdigest(),
         "intervention_index": ci,
         "trajectory": checkpoints,
